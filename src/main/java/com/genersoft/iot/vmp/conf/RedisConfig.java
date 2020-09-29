@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.alibaba.fastjson.parser.ParserConfig;
@@ -20,21 +21,16 @@ import com.genersoft.iot.vmp.utils.redis.FastJsonRedisSerializer;
 @Configuration
 public class RedisConfig extends CachingConfigurerSupport {
 
-	@Bean("redisTemplate")
+	@Bean
 	public RedisTemplate<Object, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
 		RedisTemplate<Object, Object> template = new RedisTemplate<>();
 		template.setConnectionFactory(redisConnectionFactory);
-		// 使用fastjson进行序列化处理，提高解析效率
-		FastJsonRedisSerializer<Object> serializer = new FastJsonRedisSerializer<Object>(Object.class);
-		// value值的序列化采用fastJsonRedisSerializer
-		template.setValueSerializer(serializer);
-		template.setHashValueSerializer(serializer);
-		// key的序列化采用StringRedisSerializer
-		template.setKeySerializer(new StringRedisSerializer());
-		template.setHashKeySerializer(new StringRedisSerializer());
-		template.setConnectionFactory(redisConnectionFactory);
-		// 使用fastjson时需设置此项，否则会报异常not support type
-		ParserConfig.getGlobalInstance().setAutoTypeSupport(true); 
+		StringRedisSerializer keySerializer = new StringRedisSerializer();
+		template.setKeySerializer(keySerializer);
+		template.setHashKeySerializer(keySerializer);
+		GenericJackson2JsonRedisSerializer valueSerializer = new GenericJackson2JsonRedisSerializer();
+		template.setValueSerializer(valueSerializer);
+		template.setHashValueSerializer(valueSerializer);
 		return template;
 	}
 
@@ -43,15 +39,12 @@ public class RedisConfig extends CachingConfigurerSupport {
 	 * 通过反射技术调用消息订阅处理器的相关方法进行一些业务处理
 	 * 
 	 * @param connectionFactory
-	 * @param listenerAdapter
 	 * @return
 	 */
 	@Bean
 	RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory) {
-
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         return container;
     }
-
 }
